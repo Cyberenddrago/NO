@@ -5,6 +5,24 @@ import { Organization } from "@shared/types";
 export let organizations: Organization[] = [];
 let orgCounter = 1;
 
+export const HOST_ORG_NAME = "Host Organization";
+
+export function ensureOrganizationByName(name: string): Organization {
+  const existing = organizations.find(
+    (o) => o.name.trim().toLowerCase() === name.trim().toLowerCase(),
+  );
+  if (existing) return existing;
+
+  const safeId = `org-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${orgCounter++}`;
+  const newOrg: Organization = {
+    id: safeId,
+    name,
+    createdAt: new Date().toISOString(),
+  };
+  organizations.push(newOrg);
+  return newOrg;
+}
+
 export const handleCreateOrganization: RequestHandler = (req, res) => {
   try {
     const { name, logoUrl, settings } = req.body || {};
