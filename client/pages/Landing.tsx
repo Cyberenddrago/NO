@@ -1,159 +1,315 @@
 import React, { useEffect, useRef, useState, Suspense } from "react";
-import { Canvas, useFrame, useLoader } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, useGLTF, Environment, Float, Text3D, Center } from "@react-three/drei";
 import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 import * as THREE from "three";
 
-// Modern building/pavilion-inspired 3D components
-function ModernPavilion() {
-  const group = useRef<THREE.Group>(null);
-  
-  useFrame((state) => {
-    const t = state.clock.getElapsedTime();
-    if (group.current) {
-      group.current.rotation.y = Math.sin(t * 0.1) * 0.1;
-      group.current.position.y = Math.sin(t * 0.2) * 0.1;
-    }
-  });
-
-  return (
-    <group ref={group}>
-      {/* Main pavilion structure */}
-      <mesh position={[0, 0, 0]}>
-        <boxGeometry args={[3, 0.1, 3]} />
-        <meshStandardMaterial color="#e2e8f0" metalness={0.8} roughness={0.2} />
-      </mesh>
-      
-      {/* Pillars */}
-      {[[-1.2, 0, -1.2], [1.2, 0, -1.2], [-1.2, 0, 1.2], [1.2, 0, 1.2]].map((pos, i) => (
-        <mesh key={i} position={[pos[0], 1, pos[2]]}>
-          <cylinderGeometry args={[0.1, 0.12, 2]} />
-          <meshStandardMaterial color="#94a3b8" metalness={0.6} roughness={0.3} />
-        </mesh>
-      ))}
-      
-      {/* Roof */}
-      <mesh position={[0, 2.2, 0]}>
-        <boxGeometry args={[3.5, 0.2, 3.5]} />
-        <meshStandardMaterial color="#475569" metalness={0.7} roughness={0.3} />
-      </mesh>
-      
-      {/* Glass walls */}
-      <mesh position={[0, 1, -1.45]}>
-        <planeGeometry args={[2.8, 1.8]} />
-        <meshStandardMaterial color="#bfdbfe" transparent opacity={0.3} />
-      </mesh>
-      <mesh position={[0, 1, 1.45]} rotation={[0, Math.PI, 0]}>
-        <planeGeometry args={[2.8, 1.8]} />
-        <meshStandardMaterial color="#bfdbfe" transparent opacity={0.3} />
-      </mesh>
-    </group>
-  );
+// Product interface
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  image: string;
+  category: string;
+  description: string;
+  inStock: boolean;
 }
 
-function FloatingElements() {
-  return (
-    <>
-      <Float speed={1.5} rotationIntensity={0.5} floatIntensity={0.5}>
-        <mesh position={[-3, 2, -2]}>
-          <sphereGeometry args={[0.3, 32, 32]} />
-          <meshStandardMaterial color="#3b82f6" metalness={0.8} roughness={0.2} />
-        </mesh>
-      </Float>
-      
-      <Float speed={2} rotationIntensity={0.3} floatIntensity={0.8}>
-        <mesh position={[3, -1, -3]}>
-          <dodecahedronGeometry args={[0.4]} />
-          <meshStandardMaterial color="#6366f1" metalness={0.7} roughness={0.3} />
-        </mesh>
-      </Float>
-      
-      <Float speed={1.2} rotationIntensity={0.4} floatIntensity={0.6}>
-        <mesh position={[2, 3, 1]}>
-          <octahedronGeometry args={[0.35]} />
-          <meshStandardMaterial color="#8b5cf6" metalness={0.6} roughness={0.4} />
-        </mesh>
-      </Float>
-      
-      <Float speed={1.8} rotationIntensity={0.6} floatIntensity={0.4}>
-        <mesh position={[-2, -2, 2]}>
-          <tetrahedronGeometry args={[0.4]} />
-          <meshStandardMaterial color="#06b6d4" metalness={0.5} roughness={0.5} />
-        </mesh>
-      </Float>
-    </>
-  );
+// Cart item interface
+interface CartItem extends Product {
+  quantity: number;
 }
 
-function ParticleField() {
-  const pointsRef = useRef<THREE.Points>(null);
-  const particleCount = 100;
-  
-  const positions = new Float32Array(particleCount * 3);
-  for (let i = 0; i < particleCount; i++) {
-    positions[i * 3] = (Math.random() - 0.5) * 20;
-    positions[i * 3 + 1] = (Math.random() - 0.5) * 20;
-    positions[i * 3 + 2] = (Math.random() - 0.5) * 20;
+// Sample plumbing products data
+const PLUMBING_PRODUCTS: Product[] = [
+  {
+    id: "1",
+    name: "Professional Pipe Wrench Set",
+    price: 450.00,
+    image: "https://images.pexels.com/photos/162553/keys-workshop-mechanic-tools-162553.jpeg",
+    category: "Tools",
+    description: "Heavy-duty pipe wrench set for professional plumbers",
+    inStock: true
+  },
+  {
+    id: "2", 
+    name: "Copper Pipe Fittings Kit",
+    price: 285.50,
+    image: "https://images.pexels.com/photos/1093038/pexels-photo-1093038.jpeg",
+    category: "Fittings",
+    description: "Complete copper pipe fitting kit with joints and connections",
+    inStock: true
+  },
+  {
+    id: "3",
+    name: "High-Pressure Water Pump",
+    price: 1250.00,
+    image: "https://images.pexels.com/photos/159160/gear-machine-mechanical-engine-159160.jpeg",
+    category: "Pumps",
+    description: "Industrial grade water pump for high-pressure applications",
+    inStock: true
+  },
+  {
+    id: "4",
+    name: "PVC Pipe Bundle - 4 inch",
+    price: 185.75,
+    image: "https://images.pexels.com/photos/1108572/pexels-photo-1108572.jpeg",
+    category: "Pipes",
+    description: "4-inch PVC pipes, 6-meter length bundle",
+    inStock: true
+  },
+  {
+    id: "5",
+    name: "Emergency Leak Repair Kit",
+    price: 95.00,
+    image: "https://images.pexels.com/photos/1249611/pexels-photo-1249611.jpeg",
+    category: "Repair",
+    description: "Emergency leak repair kit with sealants and patches",
+    inStock: true
+  },
+  {
+    id: "6",
+    name: "Digital Water Flow Meter",
+    price: 320.00,
+    image: "https://images.pexels.com/photos/257736/pexels-photo-257736.jpeg",
+    category: "Meters",
+    description: "Digital water flow meter with LCD display",
+    inStock: true
+  },
+  {
+    id: "7",
+    name: "Toilet Installation Kit",
+    price: 145.25,
+    image: "https://images.pexels.com/photos/6419121/pexels-photo-6419121.jpeg",
+    category: "Installation",
+    description: "Complete toilet installation kit with all hardware",
+    inStock: true
+  },
+  {
+    id: "8",
+    name: "Professional Drain Snake",
+    price: 275.00,
+    image: "https://images.pexels.com/photos/8101965/pexels-photo-8101965.jpeg",
+    category: "Tools",
+    description: "50-foot professional drain snake for blockage removal",
+    inStock: true
   }
+];
+
+// Mouse-following 3D model component
+function MouseFollowingModel() {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const { viewport, mouse } = useThree();
   
-  useFrame((state) => {
-    if (pointsRef.current) {
-      pointsRef.current.rotation.y = state.clock.getElapsedTime() * 0.05;
+  useFrame(() => {
+    if (meshRef.current) {
+      // Follow mouse position
+      meshRef.current.position.x = (mouse.x * viewport.width) / 4;
+      meshRef.current.position.y = (mouse.y * viewport.height) / 4;
+      
+      // Add rotation based on mouse movement
+      meshRef.current.rotation.y = mouse.x * 0.5;
+      meshRef.current.rotation.x = mouse.y * 0.3;
     }
   });
-  
+
   return (
-    <points ref={pointsRef}>
-      <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          count={particleCount}
-          array={positions}
-          itemSize={3}
-        />
-      </bufferGeometry>
-      <pointsMaterial size={0.05} color="#64748b" transparent opacity={0.6} />
-    </points>
+    <mesh ref={meshRef} position={[0, 0, 0]}>
+      <dodecahedronGeometry args={[0.8]} />
+      <meshStandardMaterial 
+        color="#00d4ff" 
+        metalness={0.8} 
+        roughness={0.2}
+        emissive="#001a33"
+        emissiveIntensity={0.3}
+      />
+    </mesh>
+  );
+}
+
+// Grid background component
+function GridBackground() {
+  return (
+    <div className="fixed inset-0 z-0 opacity-20">
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-blue-900 to-cyan-900" />
+      <div 
+        className="absolute inset-0"
+        style={{
+          backgroundImage: `
+            linear-gradient(rgba(0, 212, 255, 0.1) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0, 212, 255, 0.1) 1px, transparent 1px)
+          `,
+          backgroundSize: '50px 50px'
+        }}
+      />
+    </div>
   );
 }
 
 export default function Landing() {
   const { user } = useAuth();
-  const [isLoaded, setIsLoaded] = useState(false);
-
-  useEffect(() => {
-    setIsLoaded(true);
-  }, []);
+  const { toast } = useToast();
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [customerInfo, setCustomerInfo] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    address: ''
+  });
 
   if (user) return <Navigate to="/dashboard" replace />;
 
+  const addToCart = (product: Product) => {
+    setCart(prevCart => {
+      const existingItem = prevCart.find(item => item.id === product.id);
+      if (existingItem) {
+        return prevCart.map(item =>
+          item.id === product.id 
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        );
+      }
+      return [...prevCart, { ...product, quantity: 1 }];
+    });
+    
+    toast({
+      title: "Added to cart",
+      description: `${product.name} has been added to your cart.`,
+    });
+  };
+
+  const removeFromCart = (productId: string) => {
+    setCart(prevCart => prevCart.filter(item => item.id !== productId));
+  };
+
+  const updateQuantity = (productId: string, quantity: number) => {
+    if (quantity <= 0) {
+      removeFromCart(productId);
+      return;
+    }
+    
+    setCart(prevCart =>
+      prevCart.map(item =>
+        item.id === productId ? { ...item, quantity } : item
+      )
+    );
+  };
+
+  const getTotalPrice = () => {
+    return cart.reduce((total, item) => total + (item.price * item.quantity), 0);
+  };
+
+  const submitCart = async () => {
+    if (cart.length === 0) {
+      toast({
+        title: "Cart is empty",
+        description: "Please add items to your cart before submitting.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!customerInfo.name || !customerInfo.email) {
+      toast({
+        title: "Missing information",
+        description: "Please fill in your name and email address.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      // Prepare email data
+      const cartData = {
+        customer: customerInfo,
+        items: cart,
+        total: getTotalPrice(),
+        timestamp: new Date().toISOString()
+      };
+
+      // Send email to admin (you'll need to implement the email endpoint)
+      const response = await fetch('/api/send-cart-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          to: 'admin@bbplumbing.co.za',
+          subject: 'New Cart Submission - BlockBusters Plumbing',
+          cartData
+        }),
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Cart submitted!",
+          description: "Your cart has been sent to our team. We'll contact you soon.",
+        });
+        setCart([]);
+        setCustomerInfo({ name: '', email: '', phone: '', address: '' });
+        setIsCartOpen(false);
+      } else {
+        throw new Error('Failed to submit cart');
+      }
+    } catch (error) {
+      toast({
+        title: "Submission failed",
+        description: "There was an error submitting your cart. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 overflow-hidden">
+    <div className="min-h-screen bg-slate-900 text-white overflow-hidden">
+      <GridBackground />
+      
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-slate-800/90 backdrop-blur-md border-b border-slate-700/50">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-slate-900/80 backdrop-blur-md border-b border-cyan-500/20">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">V</span>
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-lg flex items-center justify-center">
+                <span className="text-slate-900 font-bold text-lg">BB</span>
               </div>
-              <span className="text-white font-semibold text-xl">VRTFlow</span>
+              <div>
+                <div className="text-white font-bold text-xl">BlockBusters and Partners</div>
+                <div className="text-cyan-400 text-sm font-medium">VRT FLOW.Outsourcing</div>
+              </div>
             </div>
             
             <div className="hidden md:flex items-center space-x-8">
-              <a href="#home" className="text-slate-300 hover:text-white transition-colors">Home</a>
-              <a href="#solutions" className="text-slate-300 hover:text-white transition-colors">Solutions</a>
-              <a href="#features" className="text-slate-300 hover:text-white transition-colors">Features</a>
-              <a href="#contact" className="text-slate-300 hover:text-white transition-colors">Contact</a>
+              <a href="#home" className="text-slate-300 hover:text-cyan-400 transition-colors">Home</a>
+              <a href="#products" className="text-slate-300 hover:text-cyan-400 transition-colors">Products</a>
+              <a href="#about" className="text-slate-300 hover:text-cyan-400 transition-colors">About</a>
+              <a href="#contact" className="text-slate-300 hover:text-cyan-400 transition-colors">Contact</a>
             </div>
             
-            <Link 
-              to="/login" 
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors font-medium"
-            >
-              Login
-            </Link>
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => setIsCartOpen(true)}
+                className="relative bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-lg transition-colors font-medium flex items-center space-x-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-1.5 6M7 13l1.5-6M17 21a2 2 0 100-4 2 2 0 000 4zM9 21a2 2 0 100-4 2 2 0 000 4z" />
+                </svg>
+                <span>Cart ({cart.length})</span>
+                {cart.length > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {cart.reduce((sum, item) => sum + item.quantity, 0)}
+                  </span>
+                )}
+              </button>
+              <Link 
+                to="/login" 
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors font-medium"
+              >
+                Login
+              </Link>
+            </div>
           </div>
         </div>
       </nav>
@@ -161,227 +317,201 @@ export default function Landing() {
       {/* Hero Section */}
       <section id="home" className="relative h-screen flex items-center justify-center">
         {/* 3D Canvas Background */}
-        <div className="absolute inset-0">
+        <div className="absolute inset-0 z-10">
           <Canvas camera={{ position: [0, 0, 8], fov: 50 }}>
             <ambientLight intensity={0.4} />
-            <directionalLight position={[10, 10, 5]} intensity={1} castShadow />
-            <pointLight position={[-10, -10, -5]} intensity={0.5} color="#3b82f6" />
+            <directionalLight position={[10, 10, 5]} intensity={1} color="#00d4ff" />
+            <pointLight position={[-10, -10, -5]} intensity={0.5} color="#0099cc" />
             
             <Suspense fallback={null}>
-              <Environment preset="city" />
-              <ModernPavilion />
-              <FloatingElements />
-              <ParticleField />
+              <Environment preset="night" />
+              <MouseFollowingModel />
+              
+              {/* Floating background elements */}
+              <Float speed={1.5} rotationIntensity={0.3} floatIntensity={0.4}>
+                <mesh position={[-4, 2, -3]}>
+                  <sphereGeometry args={[0.4, 32, 32]} />
+                  <meshStandardMaterial color="#0099cc" metalness={0.8} roughness={0.2} />
+                </mesh>
+              </Float>
+              
+              <Float speed={2} rotationIntensity={0.4} floatIntensity={0.6}>
+                <mesh position={[4, -1, -2]}>
+                  <octahedronGeometry args={[0.3]} />
+                  <meshStandardMaterial color="#00d4ff" metalness={0.7} roughness={0.3} />
+                </mesh>
+              </Float>
             </Suspense>
             
             <OrbitControls 
               enablePan={false} 
               enableZoom={false} 
-              autoRotate 
-              autoRotateSpeed={0.5}
-              maxPolarAngle={Math.PI / 2}
-              minPolarAngle={Math.PI / 3}
+              enableRotate={false}
             />
           </Canvas>
         </div>
 
         {/* Content Overlay */}
-        <div className="relative z-10 text-center px-6 max-w-4xl mx-auto">
+        <div className="relative z-20 text-center px-6 max-w-5xl mx-auto">
           <div className="mb-6">
-            <span className="inline-block px-4 py-2 bg-slate-800/80 backdrop-blur text-slate-300 rounded-full text-sm font-medium mb-4">
-              DIGITAL WORKFLOW SOLUTIONS
+            <span className="inline-block px-6 py-3 bg-cyan-500/20 backdrop-blur border border-cyan-400/30 text-cyan-300 rounded-full text-sm font-medium mb-6">
+              You're Shopping South Africa Plumbing Suppliers 24/7 JHB Delivery. Tcs.
             </span>
           </div>
           
-          <h1 className="text-5xl md:text-7xl font-bold text-slate-800 mb-6 leading-tight">
-            <span className="bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
-              VRTFlow
+          <h1 className="text-5xl md:text-8xl font-bold mb-8 leading-tight">
+            <span className="bg-gradient-to-r from-white via-cyan-200 to-cyan-400 bg-clip-text text-transparent">
+              Your plumbing,
+            </span>
+            <br />
+            <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
+              built better
             </span>
           </h1>
           
-          <p className="text-xl md:text-2xl text-slate-600 mb-8 max-w-2xl mx-auto leading-relaxed">
-            Modern job management, time tracking, and PDF automation with stunning 3D visuals
+          <p className="text-xl md:text-2xl text-slate-300 mb-10 max-w-3xl mx-auto leading-relaxed">
+            We transform your plumbing vision into tangible solutions with professional-grade supplies 
+            that keep your projects flowing smoothly.
           </p>
           
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link 
-              to="/login" 
-              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-all transform hover:scale-105 shadow-lg"
-            >
-              Get Started
-            </Link>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
             <a 
-              href="#features" 
-              className="border-2 border-slate-300 hover:border-slate-400 text-slate-700 px-8 py-4 rounded-lg font-semibold text-lg transition-all hover:bg-slate-50"
+              href="#products"
+              className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white px-8 py-4 rounded-xl font-semibold text-lg transition-all transform hover:scale-105 shadow-lg"
             >
-              Explore Features
+              Shop Now
+            </a>
+            <a 
+              href="#about" 
+              className="border-2 border-cyan-400/50 hover:border-cyan-400 text-cyan-300 hover:text-white px-8 py-4 rounded-xl font-semibold text-lg transition-all hover:bg-cyan-400/10"
+            >
+              Learn More
             </a>
           </div>
         </div>
 
-        {/* Scroll Indicator */}
-        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce">
-          <div className="w-6 h-10 border-2 border-slate-400 rounded-full flex justify-center">
-            <div className="w-1 h-3 bg-slate-400 rounded-full mt-2"></div>
+        {/* Floating particles */}
+        <div className="absolute inset-0 z-5">
+          {[...Array(20)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute w-2 h-2 bg-cyan-400/30 rounded-full animate-pulse"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                animationDelay: `${Math.random() * 2}s`,
+                animationDuration: `${2 + Math.random() * 2}s`
+              }}
+            />
+          ))}
+        </div>
+      </section>
+
+      {/* Products Section */}
+      <section id="products" className="relative py-20 z-20">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <span className="inline-block px-6 py-3 bg-cyan-500/20 backdrop-blur border border-cyan-400/30 text-cyan-300 rounded-full text-sm font-medium mb-6">
+              PROFESSIONAL SUPPLIES
+            </span>
+            <h2 className="text-4xl md:text-6xl font-bold mb-8">
+              <span className="bg-gradient-to-r from-white to-cyan-200 bg-clip-text text-transparent">
+                Premium Plumbing Products
+              </span>
+            </h2>
+            <p className="text-xl text-slate-300 max-w-3xl mx-auto">
+              Quality tools and supplies for professional plumbers and contractors across South Africa.
+            </p>
+          </div>
+          
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {PLUMBING_PRODUCTS.map((product) => (
+              <div key={product.id} className="group bg-slate-800/50 backdrop-blur border border-cyan-500/20 rounded-2xl overflow-hidden hover:border-cyan-400/50 transition-all hover:transform hover:scale-105">
+                <div className="relative overflow-hidden h-48">
+                  <img 
+                    src={product.image} 
+                    alt={product.name}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 to-transparent" />
+                  <div className="absolute top-4 right-4">
+                    <span className="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-medium">
+                      In Stock
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="p-6">
+                  <div className="text-cyan-400 text-sm font-medium mb-2">{product.category}</div>
+                  <h3 className="text-white font-semibold text-lg mb-3">{product.name}</h3>
+                  <p className="text-slate-400 text-sm mb-4">{product.description}</p>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="text-2xl font-bold text-cyan-400">
+                      R{product.price.toFixed(2)}
+                    </div>
+                    <button
+                      onClick={() => addToCart(product)}
+                      className="bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-lg transition-colors font-medium"
+                    >
+                      Add to Cart
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Solutions Section */}
-      <section id="solutions" className="py-20 bg-white/50 backdrop-blur">
+      {/* About Section */}
+      <section id="about" className="relative py-20 z-20">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-16">
-            <span className="inline-block px-4 py-2 bg-blue-100 text-blue-600 rounded-full text-sm font-medium mb-4">
-              SOLUTIONS
-            </span>
-            <h2 className="text-4xl md:text-5xl font-bold text-slate-800 mb-6">
-              Complete Business Operations
-            </h2>
-            <p className="text-xl text-slate-600 max-w-3xl mx-auto">
-              Streamline your workflow with our integrated platform for job management, staff coordination, and automated documentation.
-            </p>
-          </div>
-          
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <div className="group p-8 bg-white/80 backdrop-blur rounded-2xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-2">
-              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mb-6 group-hover:bg-blue-200 transition-colors">
-                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold text-slate-800 mb-4">Admin Dashboard</h3>
-              <p className="text-slate-600">
-                Comprehensive management tools for jobs, staff assignments, analytics, and system administration.
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
+            <div>
+              <span className="inline-block px-6 py-3 bg-cyan-500/20 backdrop-blur border border-cyan-400/30 text-cyan-300 rounded-full text-sm font-medium mb-6">
+                ABOUT US
+              </span>
+              <h2 className="text-4xl md:text-5xl font-bold mb-8">
+                <span className="bg-gradient-to-r from-white to-cyan-200 bg-clip-text text-transparent">
+                  South Africa's Premier Plumbing Supply
+                </span>
+              </h2>
+              <p className="text-xl text-slate-300 mb-8 leading-relaxed">
+                With over two decades of experience, BlockBusters and Partners has been the trusted 
+                partner for professional plumbers across Johannesburg and South Africa. We provide 
+                24/7 delivery service and maintain the largest inventory of quality plumbing supplies.
               </p>
-            </div>
-            
-            <div className="group p-8 bg-white/80 backdrop-blur rounded-2xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-2">
-              <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center mb-6 group-hover:bg-green-200 transition-colors">
-                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold text-slate-800 mb-4">Staff Portal</h3>
-              <p className="text-slate-600">
-                Mobile-optimized interface for viewing assignments, time tracking, and form submissions.
-              </p>
-            </div>
-            
-            <div className="group p-8 bg-white/80 backdrop-blur rounded-2xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-2">
-              <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mb-6 group-hover:bg-purple-200 transition-colors">
-                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold text-slate-800 mb-4">PDF Automation</h3>
-              <p className="text-slate-600">
-                Intelligent form processing and PDF generation with digital signatures and data binding.
-              </p>
-            </div>
-            
-            <div className="group p-8 bg-white/80 backdrop-blur rounded-2xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-2">
-              <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mb-6 group-hover:bg-orange-200 transition-colors">
-                <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold text-slate-800 mb-4">Time Tracking</h3>
-              <p className="text-slate-600">
-                Precise time logging with GPS integration and automated payroll-ready reports.
-              </p>
-            </div>
-            
-            <div className="group p-8 bg-white/80 backdrop-blur rounded-2xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-2">
-              <div className="w-12 h-12 bg-cyan-100 rounded-xl flex items-center justify-center mb-6 group-hover:bg-cyan-200 transition-colors">
-                <svg className="w-6 h-6 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2m-9 0h10a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold text-slate-800 mb-4">3D Experiences</h3>
-              <p className="text-slate-600">
-                Immersive 3D interfaces and visualizations that enhance user experience and engagement.
-              </p>
-            </div>
-            
-            <div className="group p-8 bg-white/80 backdrop-blur rounded-2xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-2">
-              <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center mb-6 group-hover:bg-red-200 transition-colors">
-                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.031 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold text-slate-800 mb-4">Enterprise Security</h3>
-              <p className="text-slate-600">
-                Role-based access control with enterprise-grade security and data protection.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section id="features" className="py-20 bg-slate-50">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-16">
-            <span className="inline-block px-4 py-2 bg-slate-800 text-white rounded-full text-sm font-medium mb-4">
-              FEATURES
-            </span>
-            <h2 className="text-4xl md:text-5xl font-bold text-slate-800 mb-6">
-              Built for Modern Teams
-            </h2>
-            <p className="text-xl text-slate-600 max-w-3xl mx-auto">
-              Every feature designed to streamline your operations and enhance productivity.
-            </p>
-          </div>
-          
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div className="space-y-8">
-              <div className="flex gap-4">
-                <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
+              
+              <div className="grid sm:grid-cols-2 gap-6 mb-8">
+                <div className="bg-slate-800/30 backdrop-blur border border-cyan-500/20 rounded-xl p-6">
+                  <div className="text-3xl font-bold text-cyan-400 mb-2">24/7</div>
+                  <div className="text-slate-300">Delivery Service</div>
                 </div>
-                <div>
-                  <h3 className="text-xl font-semibold text-slate-800 mb-2">Lightning Fast</h3>
-                  <p className="text-slate-600">Optimized performance with instant loading and real-time updates across all devices.</p>
+                <div className="bg-slate-800/30 backdrop-blur border border-cyan-500/20 rounded-xl p-6">
+                  <div className="text-3xl font-bold text-cyan-400 mb-2">10K+</div>
+                  <div className="text-slate-300">Products Available</div>
                 </div>
               </div>
               
-              <div className="flex gap-4">
-                <div className="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-xl font-semibold text-slate-800 mb-2">Mobile First</h3>
-                  <p className="text-slate-600">Responsive design ensures perfect functionality on smartphones, tablets, and desktops.</p>
-                </div>
-              </div>
-              
-              <div className="flex gap-4">
-                <div className="w-12 h-12 bg-purple-500 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-xl font-semibold text-slate-800 mb-2">User Friendly</h3>
-                  <p className="text-slate-600">Intuitive interface design that requires minimal training and maximizes productivity.</p>
-                </div>
-              </div>
+              <Link 
+                to="/login"
+                className="inline-block bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white px-8 py-4 rounded-xl font-semibold transition-all transform hover:scale-105"
+              >
+                Get Professional Access
+              </Link>
             </div>
             
             <div className="relative">
-              <div className="h-96 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-3xl backdrop-blur border border-white/20 shadow-2xl overflow-hidden">
+              <div className="h-96 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-3xl backdrop-blur border border-cyan-400/20 shadow-2xl overflow-hidden">
                 <Canvas camera={{ position: [0, 0, 5], fov: 60 }}>
                   <ambientLight intensity={0.6} />
-                  <directionalLight position={[5, 5, 5]} intensity={0.8} />
+                  <directionalLight position={[5, 5, 5]} intensity={0.8} color="#00d4ff" />
                   <Suspense fallback={null}>
                     <Float speed={2} rotationIntensity={0.3} floatIntensity={0.5}>
                       <mesh>
                         <torusKnotGeometry args={[1, 0.3, 100, 16]} />
-                        <meshStandardMaterial color="#3b82f6" metalness={0.8} roughness={0.2} />
+                        <meshStandardMaterial color="#00d4ff" metalness={0.8} roughness={0.2} />
                       </mesh>
                     </Float>
                   </Suspense>
@@ -394,53 +524,178 @@ export default function Landing() {
       </section>
 
       {/* Footer */}
-      <footer id="contact" className="bg-slate-800 text-white py-16">
+      <footer id="contact" className="relative bg-slate-900/50 backdrop-blur border-t border-cyan-500/20 py-16 z-20">
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid md:grid-cols-4 gap-8">
             <div className="md:col-span-2">
-              <div className="flex items-center space-x-2 mb-4">
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">V</span>
+              <div className="flex items-center space-x-3 mb-6">
+                <div className="w-10 h-10 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-lg flex items-center justify-center">
+                  <span className="text-slate-900 font-bold text-lg">BB</span>
                 </div>
-                <span className="text-white font-semibold text-xl">VRTFlow</span>
+                <div>
+                  <div className="text-white font-bold text-xl">BlockBusters and Partners</div>
+                  <div className="text-cyan-400 text-sm font-medium">VRT FLOW.Outsourcing</div>
+                </div>
               </div>
-              <p className="text-slate-300 mb-6 max-w-md">
-                Transform your business operations with our modern workflow solutions, combining powerful functionality with stunning 3D experiences.
+              <p className="text-slate-300 mb-8 max-w-md">
+                Your trusted partner for professional plumbing supplies across South Africa. 
+                Quality products, reliable service, delivered 24/7.
               </p>
-              <Link 
-                to="/login" 
-                className="inline-block bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+              <button
+                onClick={() => setIsCartOpen(true)}
+                className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-all"
               >
-                Get Started Today
-              </Link>
+                View Cart & Checkout
+              </button>
             </div>
             
             <div>
-              <h4 className="font-semibold mb-4">Solutions</h4>
+              <h4 className="font-semibold mb-4 text-cyan-400">Products</h4>
               <ul className="space-y-2 text-slate-300">
-                <li><a href="#" className="hover:text-white transition-colors">Job Management</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Staff Portal</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Time Tracking</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">PDF Automation</a></li>
+                <li><a href="#" className="hover:text-cyan-400 transition-colors">Pipes & Fittings</a></li>
+                <li><a href="#" className="hover:text-cyan-400 transition-colors">Tools & Equipment</a></li>
+                <li><a href="#" className="hover:text-cyan-400 transition-colors">Pumps & Motors</a></li>
+                <li><a href="#" className="hover:text-cyan-400 transition-colors">Repair Kits</a></li>
               </ul>
             </div>
             
             <div>
-              <h4 className="font-semibold mb-4">Support</h4>
+              <h4 className="font-semibold mb-4 text-cyan-400">Support</h4>
               <ul className="space-y-2 text-slate-300">
-                <li><a href="#" className="hover:text-white transition-colors">Documentation</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Help Center</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Contact Us</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">System Status</a></li>
+                <li><a href="#" className="hover:text-cyan-400 transition-colors">Contact Us</a></li>
+                <li><a href="#" className="hover:text-cyan-400 transition-colors">Delivery Info</a></li>
+                <li><a href="#" className="hover:text-cyan-400 transition-colors">Returns</a></li>
+                <li><a href="#" className="hover:text-cyan-400 transition-colors">Technical Support</a></li>
               </ul>
             </div>
           </div>
           
-          <div className="border-t border-slate-700 mt-12 pt-8 text-center text-slate-400">
-            <p>&copy; {new Date().getFullYear()} VRTFlow. All rights reserved.</p>
+          <div className="border-t border-cyan-500/20 mt-12 pt-8 text-center text-slate-400">
+            <p>&copy; {new Date().getFullYear()} BlockBusters and Partners. All rights reserved.</p>
           </div>
         </div>
       </footer>
+
+      {/* Shopping Cart Modal */}
+      {isCartOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setIsCartOpen(false)} />
+          <div className="relative bg-slate-800 rounded-2xl border border-cyan-500/30 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-cyan-500/20">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-white">Shopping Cart</h2>
+                <button
+                  onClick={() => setIsCartOpen(false)}
+                  className="text-slate-400 hover:text-white transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              {cart.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="text-slate-400 mb-4">Your cart is empty</div>
+                  <button
+                    onClick={() => setIsCartOpen(false)}
+                    className="bg-cyan-600 hover:bg-cyan-700 text-white px-6 py-2 rounded-lg transition-colors"
+                  >
+                    Continue Shopping
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-4 mb-6">
+                    {cart.map((item) => (
+                      <div key={item.id} className="flex items-center gap-4 p-4 bg-slate-700/30 rounded-xl">
+                        <img src={item.image} alt={item.name} className="w-16 h-16 object-cover rounded-lg" />
+                        <div className="flex-1">
+                          <h3 className="text-white font-semibold">{item.name}</h3>
+                          <div className="text-cyan-400 font-bold">R{item.price.toFixed(2)}</div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                            className="bg-slate-600 hover:bg-slate-500 text-white w-8 h-8 rounded-lg flex items-center justify-center"
+                          >
+                            -
+                          </button>
+                          <span className="text-white font-medium w-8 text-center">{item.quantity}</span>
+                          <button
+                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                            className="bg-slate-600 hover:bg-slate-500 text-white w-8 h-8 rounded-lg flex items-center justify-center"
+                          >
+                            +
+                          </button>
+                        </div>
+                        <button
+                          onClick={() => removeFromCart(item.id)}
+                          className="text-red-400 hover:text-red-300 transition-colors"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div className="border-t border-cyan-500/20 pt-6">
+                    <div className="flex justify-between items-center mb-6">
+                      <span className="text-xl font-semibold text-white">Total:</span>
+                      <span className="text-2xl font-bold text-cyan-400">R{getTotalPrice().toFixed(2)}</span>
+                    </div>
+                    
+                    {/* Customer Information Form */}
+                    <div className="space-y-4 mb-6">
+                      <h3 className="text-lg font-semibold text-white">Contact Information</h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        <input
+                          type="text"
+                          placeholder="Full Name"
+                          value={customerInfo.name}
+                          onChange={(e) => setCustomerInfo({...customerInfo, name: e.target.value})}
+                          className="bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-400"
+                        />
+                        <input
+                          type="email"
+                          placeholder="Email Address"
+                          value={customerInfo.email}
+                          onChange={(e) => setCustomerInfo({...customerInfo, email: e.target.value})}
+                          className="bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-400"
+                        />
+                      </div>
+                      <input
+                        type="tel"
+                        placeholder="Phone Number"
+                        value={customerInfo.phone}
+                        onChange={(e) => setCustomerInfo({...customerInfo, phone: e.target.value})}
+                        className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-400"
+                      />
+                      <textarea
+                        placeholder="Delivery Address"
+                        value={customerInfo.address}
+                        onChange={(e) => setCustomerInfo({...customerInfo, address: e.target.value})}
+                        className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-400 h-20 resize-none"
+                      />
+                    </div>
+                    
+                    <button
+                      onClick={submitCart}
+                      className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white px-6 py-4 rounded-xl font-semibold text-lg transition-all transform hover:scale-105"
+                    >
+                      Submit Cart & Get Quote
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
