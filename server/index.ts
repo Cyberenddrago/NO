@@ -135,6 +135,7 @@ import { securityMonitor, sensitiveEndpointLimiter, getSecurityEvents } from "./
 import { handleCreateManual, handleGetManuals, handleUpdateManual, handleDeleteManual } from "./routes/manuals";
 import { uploadAdMiddleware, handleCreateAd, handleGetActiveAds, handleUpdateAd, handleDeleteAd } from "./routes/ads";
 import { handleCreateOrganization, handleGetOrganizations, handleUpdateOrganization, handleDeleteOrganization, ensureOrganizationByName, HOST_ORG_NAME } from "./routes/organizations";
+import { handleSendCartEmail } from "./routes/cart-email";
 
 // Proper admin middleware that works with JWT authentication
 const requireAdmin: RequestHandler = (req: any, res, next) => {
@@ -423,6 +424,7 @@ export async function createServer() {
   // Email routes
   app.post("/api/send-email", handleSendEmail);
   app.post("/api/send-form-submission", handleAutoSendFormSubmission);
+  app.post("/api/send-cart-email", handleSendCartEmail);
 
   // Security monitoring routes (admin only)
   app.get("/api/admin/security-events", verifyToken, requireAdmin, getSecurityEvents);
