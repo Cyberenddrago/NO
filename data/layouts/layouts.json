@@ -1,0 +1,88 @@
+[
+  {
+    "id": "default-layout",
+    "name": "Default Layout",
+    "version": 1,
+    "lastModified": "2025-08-29T01:00:38.379Z",
+    "createdBy": "system",
+    "components": [
+      {
+        "id": "header-component",
+        "type": "container",
+        "position": {
+          "x": 0,
+          "y": 0
+        },
+        "size": {
+          "width": 1200,
+          "height": 80
+        },
+        "styles": {
+          "backgroundColor": "#1f2937",
+          "color": "#ffffff",
+          "padding": "16px"
+        },
+        "content": {
+          "text": "Admin Dashboard",
+          "children": []
+        },
+        "visible": true,
+        "responsive": {
+          "desktop": true,
+          "tablet": true,
+          "mobile": true
+        }
+      },
+      {
+        "id": "main-nav-component",
+        "type": "container",
+        "position": {
+          "x": 0,
+          "y": 80
+        },
+        "size": {
+          "width": 1200,
+          "height": 60
+        },
+        "styles": {
+          "backgroundColor": "#374151",
+          "padding": "12px"
+        },
+        "content": {
+          "children": []
+        },
+        "visible": true,
+        "responsive": {
+          "desktop": true,
+          "tablet": true,
+          "mobile": true
+        }
+      },
+      {
+        "id": "content-area-component",
+        "type": "container",
+        "position": {
+          "x": 0,
+          "y": 140
+        },
+        "size": {
+          "width": 1200,
+          "height": 600
+        },
+        "styles": {
+          "backgroundColor": "#f9fafb",
+          "padding": "24px"
+        },
+        "content": {
+          "children": []
+        },
+        "visible": true,
+        "responsive": {
+          "desktop": true,
+          "tablet": true,
+          "mobile": true
+        }
+      }
+    ]
+  }
+]

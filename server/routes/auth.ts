@@ -1,0 +1,345 @@
+import { RequestHandler } from "express";
+import { LoginRequest, LoginResponse, User } from "@shared/types";
+
+// Mock users - in production, use a proper database
+export const users: (User & { password: string })[] = [
+  {
+    id: "staff-1",
+    username: "lebo",
+    email: "lebo@company.com",
+    password: "lebo123",
+    role: "staff",
+    name: "Lebo",
+    createdAt: new Date().toISOString(),
+    location: {
+      city: "Johannesburg",
+      address: "5 Thora Cres, Wynberg, Sandton, 2090",
+      coordinates: { lat: -26.1076, lng: 28.0567 },
+    },
+    schedule: {
+      workingLateShift: false,
+      shiftStartTime: "05:00",
+      shiftEndTime: "17:00",
+      weekType: "normal",
+    },
+  },
+  {
+    id: "staff-2",
+    username: "freedom",
+    email: "freedom@company.com",
+    password: "freedom123",
+    role: "staff",
+    name: "Freedom",
+    createdAt: new Date().toISOString(),
+    location: {
+      city: "Johannesburg",
+      address: "5 Thora Cres, Wynberg, Sandton, 2090",
+      coordinates: { lat: -26.1076, lng: 28.0567 },
+    },
+    schedule: {
+      workingLateShift: true,
+      shiftStartTime: "05:00",
+      shiftEndTime: "19:00",
+      weekType: "late",
+    },
+  },
+  {
+    id: "staff-3",
+    username: "keenan",
+    email: "keenan@company.com",
+    password: "keenan123",
+    role: "staff",
+    name: "Keenan",
+    createdAt: new Date().toISOString(),
+    location: {
+      city: "Cape Town",
+      address: "98 Marine Dr, Paarden Eiland, Cape Town, 7405",
+      coordinates: { lat: -33.8903, lng: 18.4979 },
+    },
+    schedule: {
+      workingLateShift: false,
+      shiftStartTime: "05:00",
+      shiftEndTime: "17:00",
+      weekType: "normal",
+    },
+  },
+  {
+    id: "admin-1",
+    username: "vinesh",
+    email: "vinesh@company.com",
+    password: "vinesh123",
+    role: "super_admin",
+    name: "Vinesh",
+    createdAt: new Date().toISOString(),
+    location: {
+      city: "Johannesburg",
+      address: "5 Thora Cres, Wynberg, Sandton, 2090",
+      coordinates: { lat: -26.1076, lng: 28.0567 },
+    },
+  },
+  {
+    id: "supervisor-1",
+    username: "shehkira",
+    email: "shehkira@company.com",
+    password: "shehkira123",
+    role: "supervisor",
+    name: "Shehkira",
+    createdAt: new Date().toISOString(),
+    location: {
+      city: "Cape Town",
+      address: "98 Marine Dr, Paarden Eiland, Cape Town, 7405",
+      coordinates: { lat: -33.8903, lng: 18.4979 },
+    },
+  },
+  {
+    id: "supervisor-2",
+    username: "frans",
+    email: "frans@company.com",
+    password: "frans123",
+    role: "supervisor",
+    name: "Frans",
+    createdAt: new Date().toISOString(),
+    location: {
+      city: "Johannesburg",
+      address: "5 Thora Cres, Wynberg, Sandton, 2090",
+      coordinates: { lat: -26.1076, lng: 28.0567 },
+    },
+  },
+  {
+    id: "apollo-1",
+    username: "sune",
+    email: "sune@company.com",
+    password: "sune123",
+    role: "apollo",
+    name: "Sune",
+    createdAt: new Date().toISOString(),
+    location: {
+      city: "Cape Town",
+      address: "98 Marine Dr, Paarden Eiland, Cape Town, 7405",
+      coordinates: { lat: -33.8903, lng: 18.4979 },
+    },
+  },
+  {
+    id: "staff-4",
+    username: "zaundre",
+    email: "zaundre@company.com",
+    password: "zaundre123",
+    role: "staff",
+    name: "Zaundre",
+    createdAt: new Date().toISOString(),
+    location: {
+      city: "Cape Town",
+      address: "98 Marine Dr, Paarden Eiland, Cape Town, 7405",
+      coordinates: { lat: -33.8903, lng: 18.4979 },
+    },
+    schedule: {
+      workingLateShift: true,
+      shiftStartTime: "05:00",
+      shiftEndTime: "19:00",
+      weekType: "late",
+    },
+  },
+  {
+    id: "emergency-admin-1",
+    username: "rona",
+    email: "rona@emergency.com",
+    password: "Rontry999",
+    role: "admin",
+    name: "Rona (Emergency Admin)",
+    createdAt: new Date().toISOString(),
+    location: {
+      city: "Johannesburg",
+      address: "Emergency Access",
+      coordinates: { lat: -26.1076, lng: 28.0567 },
+    },
+  },
+];
+
+export const handleLogin: RequestHandler = (req, res) => {
+  try {
+    const { username, password }: LoginRequest = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({ error: "Username and password required" });
+    }
+
+    const user = users.find(
+      (u) => u.username === username && u.password === password,
+    );
+
+    if (!user) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+
+    // Remove password from response
+    const { password: _, ...userWithoutPassword } = user;
+
+    const response: LoginResponse = {
+      user: userWithoutPassword,
+      token: `mock-token-${user.id}`, // In production, use proper JWT
+    };
+
+    res.json(response);
+  } catch (error) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export const handleGetUsers: RequestHandler = (req, res) => {
+  try {
+    // Remove passwords from response
+    const usersWithoutPasswords = users.map(({ password, ...user }) => user);
+    res.json(usersWithoutPasswords);
+  } catch (error) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export const handleUpdateUser: RequestHandler = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+
+    // Check if user is admin
+    const token = req.headers.authorization?.replace("Bearer ", "");
+    const userId = token ? token.replace("mock-token-", "") : "";
+
+    if (userId !== "admin-1") {
+      return res
+        .status(403)
+        .json({ error: "Only administrators can update users" });
+    }
+
+    const userIndex = users.findIndex((user) => user.id === id);
+
+    if (userIndex === -1) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Update user (excluding password)
+    const { password, ...updateData } = updates;
+    users[userIndex] = {
+      ...users[userIndex],
+      ...updateData,
+    };
+
+    // Save updated user to MongoDB to persist changes
+    try {
+      const { saveUserToMongo } = await import("../utils/mongoDataAccess");
+      await saveUserToMongo(users[userIndex]);
+      console.log(`User updated and saved to MongoDB: ${id}`);
+    } catch (mongoError) {
+      console.error("Failed to save user update to MongoDB:", mongoError);
+      // Don't fail the request if MongoDB sync fails, but log the error
+    }
+
+    // Remove password from response
+    const { password: _, ...userWithoutPassword } = users[userIndex];
+    res.json(userWithoutPassword);
+  } catch (error) {
+    console.error("Error updating user:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export const handleUpdateUserPassword: RequestHandler = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { password } = req.body;
+
+    // Check if user is admin
+    const token = req.headers.authorization?.replace("Bearer ", "");
+    const userId = token ? token.replace("mock-token-", "") : "";
+
+    if (userId !== "admin-1") {
+      return res
+        .status(403)
+        .json({ error: "Only administrators can update passwords" });
+    }
+
+    if (!password) {
+      return res.status(400).json({ error: "Password is required" });
+    }
+
+    const userIndex = users.findIndex((user) => user.id === id);
+
+    if (userIndex === -1) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Update password in memory
+    users[userIndex].password = password;
+
+    // Save updated user to MongoDB to persist changes
+    try {
+      const { saveUserToMongo } = await import("../utils/mongoDataAccess");
+      await saveUserToMongo(users[userIndex]);
+      console.log(`Password updated and saved to MongoDB for user: ${id}`);
+    } catch (mongoError) {
+      console.error("Failed to save password update to MongoDB:", mongoError);
+      // Don't fail the request if MongoDB sync fails, but log the error
+    }
+
+    res.json({ message: "Password updated successfully" });
+  } catch (error) {
+    console.error("Error updating password:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export const handleDeleteUser: RequestHandler = (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Check if user is admin (simple check for mock implementation)
+    const token = req.headers.authorization?.replace("Bearer ", "");
+    const userId = token ? token.replace("mock-token-", "") : "";
+
+    if (userId !== "admin-1") {
+      return res
+        .status(403)
+        .json({ error: "Only administrators can delete users" });
+    }
+
+    const userIndex = users.findIndex((user) => user.id === id);
+
+    if (userIndex === -1) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Prevent deletion of admin users
+    if (users[userIndex].role === "admin") {
+      return res
+        .status(403)
+        .json({ error: "Cannot delete administrator accounts" });
+    }
+
+    users.splice(userIndex, 1);
+    res.status(204).send();
+  } catch (error) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export const handleVerifyToken: RequestHandler = (req, res) => {
+  try {
+    const token = req.headers.authorization?.replace("Bearer ", "");
+
+    if (!token) {
+      return res.status(401).json({ error: "No token provided" });
+    }
+
+    // Simple token verification - in production, use proper JWT verification
+    const userId = token.replace("mock-token-", "");
+    const user = users.find((u) => u.id === userId);
+
+    if (!user) {
+      return res.status(401).json({ error: "Invalid token" });
+    }
+
+    const { password: _, ...userWithoutPassword } = user;
+    res.json({ user: userWithoutPassword });
+  } catch (error) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
